@@ -1,43 +1,122 @@
+
+<#
+.SYNOPSIS
+  原神启动器防火墙控制脚本
+.DESCRIPTION
+  1. 自动启用"原神 禁所有连接"防火墙规则
+  2. 启动GIMI quick start 
+  3. 禁用"原神 禁所有连接"防火墙规则
+.NOTES
+  需要管理员权限运行
+#>
+
 param(
-    [Parameter(Mandatory = $false)]
+    [ValidateSet("NetOffLaunch", "NetOffLaunch-Imt")]
+    [string]$Mode = "NetOffLaunch", 
+
+    # 选择对应服务器的防火墙规则
     [ValidateSet("CN","Inter")]
-    [string]$Server = "CN",
+    [string]$ServerRule = "Inter",
 
     [Parameter(Mandatory = $false)]
     [switch]$ConstOw
 )
 
-$FirewallRuleManager = Resolve-Path "./FirewallRuleManager.ps1"
-
-$FirewallRule = "原神 禁所有连接"
-if($Server -eq "CN") {
-    $FirewallRule = "原神外服 禁所有连接"
+# 检查管理员权限
+if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
+    Write-Host "错误：需要管理员权限运行此脚本" -ForegroundColor Red
+    Read-Host "按回车键退出..."
+    exit 0
 }
 
-$gimiHome = "D:\XXMI\GIMI"
-$xxmiLauncher = "D:\XXMI\Resources\Bin\XXMI Launcher.exe"
+# 导入模组
+Import-Module .\DeleteCache.psm1, .\Overwrited3dxuser.psm1 -Force
 
-function OverwriteModConstant {
-    if(-not (Test-Path ".\d3dx_user.ini")) {
-        Write-Host "[Warning] OverwriteModConstant: 未找到用于覆写的d3dx_user.ini，覆写中止。"
-        return
-    }
-    Copy-Item ".\d3dx_user.ini" "$gimiHome\d3dx_user.ini" -Force
-    Write-Host "d3dx_user.ini have been overwrited" -ForegroundColor White
+# 导入配置
+try {
+    $configJson = Get-Content .\config.json -Raw | ConvertFrom-Json
+} catch {
+    Write-Warning "导入用户配置失败，使用默认配置。ErrorMessage: $_"
+    Copy-Item .\config_default.json .\config.json
+    $configJson = Get-Content .\config.json -Raw | ConvertFrom-Json
 }
+
+# 定义常量
+$ControllerPath = Resolve-Path ".\FirewallRuleController.ps1"
+$FirewallRuleName = "原神 禁所有连接"
+if($ServerRule -eq "Inter") {
+    $FirewallRuleName = "原神外服 禁所有连接"
+}
+$XXMILaucherPath = Join-Path $configJson.XXMI_HOME "Resources\Bin\XXMI Launcher.exe"
+$XXMILaucherArgs = "--nogui --xxmi GIMI"
 
 try {
-    if($ConstOw) {
-        OverwriteModConstant
+
+    # 0. 清除缓存+修改游戏客户端路径
+
+    if($ServerRule -eq "CN") {
+        DeleteCache("CN")
+        Start-Process -FilePath ".\ChangeXXMIConfig.exe" -ArgumentList "CN" -WorkingDirectory ($PWD.Path)
+        if($LASTEXITCODE -ne 0) {
+            Write-Warning "更改XXMI的游戏客户端路径时发生错误"
+        }
     }
-    exit 0
-    & $FirewallRuleManager -RuleName $FirewallRule -Action "Enable"
-    Start-Process -FilePath $xxmiLauncher -ArgumentList "--nogui","--xxmi","GIMI"
-    Start-Sleep -Seconds 10
-    & $FirewallRuleManager -RuleName $FirewallRule -Action "Disable"
+    elseif($ServerRule -eq "Inter") {
+        DeleteCache("Inter")
+        Start-Process -FilePath ".\ChangeXXMIConfig.exe" -ArgumentList "Inter" -WorkingDirectory ($PWD.Path)
+        if($LASTEXITCODE -ne 0) {
+            Write-Warning "更改XXMI的游戏客户端路径时发生错误"
+        }
+    }
+    else {
+        throw "错误的服务器: $ServerRule"
+    }
+
+    # （可选）覆写d3dx_user.ini
+    if ($ConstOw) {
+        Overwrited3dxuser("Overwrite")
+    }
+
+    # 1. 启动防火墙
+    # Write-Host "成功启用 $($rules.Count) 条防火墙规则" -ForegroundColor Green
+    & $ControllerPath -RuleName $FirewallRuleName -Action "Enable"
+    if ($LASTEXITCODE -ne 0) {
+        throw "防火墙启用失败，程序终止"
+    }
+
+    # 2. 启动XXMI Launcher
+    Write-Host "正在启动 XXMI Launcher..."
+    $process = Start-Process -FilePath $XXMILaucherPath -ArgumentList $XXMILaucherArgs -PassThru -ErrorAction Stop
+    
+    if (-not $process) {
+        throw "无法启动 XXMI Launcher"
+    }
+    
+    Write-Host "XXMI Launcher 已启动 (PID: $($process.Id))" -ForegroundColor Green
+
+    # 3. 等待1秒
+    Start-Sleep -Seconds 5
+
+    # 4. 禁用防火墙
+    # Write-Host "正在禁用防火墙规则: $FirewallRuleName..."
+    # $rules | Disable-NetFirewallRule -ErrorAction Stop
+    # Write-Host "成功禁用 $($rules.Count) 条防火墙规则" -ForegroundColor Green
+
+    & $ControllerPath -RuleName $FirewallRuleName -Action "Disable"
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "警告！防火墙禁用失败，需要手动禁用" -ForegroundColor Yellow
+    }
+
+    # (Mode == "NetOffLaunch-Imt") 频繁断网
+    if ($Mode -eq "NetOffLaunch-Imt") {
+        $NetOffImtSciptPath = ".\IntermittentBlocking.ps1"
+        & $NetOffImtSciptPath -RuleName $FirewallRuleName -ControllerPath $ControllerPath
+    }
+
     Write-Host "脚本执行完成" -ForegroundColor Green
-    exit 0
-} catch {
-    Write-Host "脚本执行失败" -ForegroundColor Red
+}
+catch {
+    Write-Host "错误：$_" -ForegroundColor Red
+    Read-Host "按回车键退出..."
     exit 1
 }
