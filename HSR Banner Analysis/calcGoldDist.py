@@ -175,35 +175,52 @@ def drawAllDist() :
     ax.plot(np.arange(0,81,1),lightc_times_presum,color="y")
     plt.show()
 
-if __name__ == "__main__" :
-    # charac_base_prob = genBaseProbArray(90, 0.006, 74, 0.06)
-    # lightc_base_prob = genBaseProbArray(80, 0.008, 66, 0.07)
+def showTotalGoldDistPreSum() :
+    charac_base_prob = genBaseProbArray(90, 0.006, 74, 0.06)
+    lightc_base_prob = genBaseProbArray(80, 0.008, 66, 0.07)
 
-    # charac_times_dist = calcTimesDist(charac_base_prob)
-    # lightc_times_dist = calcTimesDist(lightc_base_prob)
+    charac_times_dist = calcTimesDist(charac_base_prob)
+    lightc_times_dist = calcTimesDist(lightc_base_prob)
 
-    # total_gold_num = 69
-    # charac_times_total_dist = calcSumDist(charac_times_dist, total_gold_num)
-    # lightc_times_total_dist = calcSumDist(lightc_times_dist, total_gold_num)
+    total_gold_num = 69
+    charac_times_total_dist = calcSumDist(charac_times_dist, total_gold_num)
+    lightc_times_total_dist = calcSumDist(lightc_times_dist, total_gold_num)
+    # storeArray(charac_times_total_dist, "./tmpdata/角色池69金抽数概率分布.txt")
+    # storeArray(lightc_times_total_dist, "./tmpdata/光锥池69金抽数概率分布.txt")
+    # exit(0)
 
-    # charac_presum = calcPreSum(charac_times_total_dist)
-    # lightc_presum = calcPreSum(lightc_times_total_dist)
-    # storeArray(charac_presum, "角色池69金前缀和.txt")
-    # storeArray(lightc_presum, "光锥池69金前缀和.txt")
-    charac_presum = readArray("角色池69金前缀和.txt")
-    lightc_presum = readArray("光锥池69金前缀和.txt")
+    # charac_times_total_dist = readArray("./tmpdata/角色池{}金抽数概率分布.txt".format(total_gold_num))
+    # lightc_times_total_dist = readArray("./tmpdata/光锥池{}金抽数概率分布.txt".format(total_gold_num))
+    charac_expect = calcExpect(charac_times_total_dist)
+    lightc_expect = calcExpect(lightc_times_total_dist)
+    print("两个期望：", charac_expect, lightc_expect)
+
+    charac_presum = calcPreSum(charac_times_total_dist)
+    lightc_presum = calcPreSum(lightc_times_total_dist)
+    # storeArray(charac_presum, "./tmpdata/角色池69金前缀和.txt")
+    # storeArray(lightc_presum, "./tmpdata/光锥池69金前缀和.txt")
+    # exit(0)
+    # charac_presum = readArray("./tmpdata/角色池{}金前缀和.txt".format(total_gold_num))
+    # lightc_presum = readArray("./tmpdata/光锥池{}金前缀和.txt".format(total_gold_num))
+
     length = max(charac_presum.shape[0], lightc_presum.shape[0])
 
     scatter_size = 50
     fig = plt.figure(num=4, figsize=(2,1))
     ax =fig.add_subplot(211)
-    ax.set_title("角色池（常驻池）前N抽出69金的概率分布",fontsize=40)
+    ax.set_title("角色池（常驻池）前N抽出{}金的概率分布".format(total_gold_num),fontsize=40)
     ax.set_xlim([0,length])
     ax.set_ylim([0,1])
+    pos_50 = getQuantile(charac_presum,0.5)
     pos_90 = getQuantile(charac_presum,0.9)
     pos_99 = getQuantile(charac_presum,0.99)
+    ax.scatter(pos_50,charac_presum[pos_50],c="r",s=scatter_size)
     ax.scatter(pos_90,charac_presum[pos_90],c="r",s=scatter_size)
     ax.scatter(pos_99,charac_presum[pos_99],c="r",s=scatter_size)
+    ax.annotate('({},{})'.format(pos_50,0.5),
+         xy=(pos_50, charac_presum[pos_50]), xycoords='data',
+         xytext=(+20, -30), textcoords='offset points', fontsize=30,
+         arrowprops=dict(arrowstyle="-", connectionstyle="arc3,rad=0"))
     ax.annotate('({},{})'.format(pos_90,0.9),
          xy=(pos_90, charac_presum[pos_90]), xycoords='data',
          xytext=(-40, -40), textcoords='offset points', fontsize=30,
@@ -215,13 +232,19 @@ if __name__ == "__main__" :
     ax.plot(np.arange(0,charac_presum.shape[0]), charac_presum, color='b')
 
     ax =fig.add_subplot(212)
-    ax.set_title("光锥池前N抽出69金的概率分布",fontsize=40)
+    ax.set_title("光锥池前N抽出{}金的概率分布".format(total_gold_num),fontsize=40)
     ax.set_xlim([0,length])
     ax.set_ylim([0,1])
+    pos_50 = getQuantile(lightc_presum,0.5)
     pos_90 = getQuantile(lightc_presum,0.9)
     pos_99 = getQuantile(lightc_presum,0.99)
+    ax.scatter(pos_50,lightc_presum[pos_50],c="g",s=scatter_size)
     ax.scatter(pos_90,lightc_presum[pos_90],c="g",s=scatter_size)
     ax.scatter(pos_99,lightc_presum[pos_99],c="g",s=scatter_size)
+    ax.annotate('({},{})'.format(pos_50,0.5),
+         xy=(pos_50, lightc_presum[pos_50]), xycoords='data',
+         xytext=(-50, -50), textcoords='offset points', fontsize=30,
+         arrowprops=dict(arrowstyle="-", connectionstyle="arc3,rad=0"))
     ax.annotate('({},{})'.format(pos_90,0.9),
          xy=(pos_90, lightc_presum[pos_90]), xycoords='data',
          xytext=(-50, -50), textcoords='offset points', fontsize=30,
@@ -232,3 +255,6 @@ if __name__ == "__main__" :
          arrowprops=dict(arrowstyle="-", connectionstyle="arc3,rad=0"))
     ax.plot(np.arange(0,lightc_presum.shape[0]), lightc_presum, color='y')
     plt.show()
+
+if __name__ == "__main__" :
+    showTotalGoldDistPreSum()
