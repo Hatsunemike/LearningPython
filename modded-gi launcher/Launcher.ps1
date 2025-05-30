@@ -3,8 +3,10 @@
 .SYNOPSIS
   原神启动器防火墙控制脚本
 .DESCRIPTION
+  0. 删除缓存，修改游戏客户端路径（XXMI配置）
+     修改unlockerfps_un配置
   1. 自动启用"原神 禁所有连接"防火墙规则
-  2. 启动GIMI quick start 
+  2. 启动unlocker_ 
   3. 禁用"原神 禁所有连接"防火墙规则
 .NOTES
   需要管理员权限运行
@@ -16,11 +18,14 @@ param(
 
     # 选择对应服务器的防火墙规则
     [ValidateSet("CN","Inter")]
-    [string]$ServerRule = "Inter",
+    [string]$ServerRule = "CN",
 
     [Parameter(Mandatory = $false)]
     [switch]$ConstOw
 )
+
+# 更改工作目录
+Set-Location -Path $PSScriptRoot
 
 # 检查管理员权限
 if (-not ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)) {
@@ -54,22 +59,10 @@ try {
 
     # 0. 清除缓存+修改游戏客户端路径
 
-    if($ServerRule -eq "CN") {
-        DeleteCache("CN")
-        Start-Process -FilePath ".\ChangeXXMIConfig.exe" -ArgumentList "CN" -WorkingDirectory ($PWD.Path)
-        if($LASTEXITCODE -ne 0) {
-            Write-Warning "更改XXMI的游戏客户端路径时发生错误"
-        }
-    }
-    elseif($ServerRule -eq "Inter") {
-        DeleteCache("Inter")
-        Start-Process -FilePath ".\ChangeXXMIConfig.exe" -ArgumentList "Inter" -WorkingDirectory ($PWD.Path)
-        if($LASTEXITCODE -ne 0) {
-            Write-Warning "更改XXMI的游戏客户端路径时发生错误"
-        }
-    }
-    else {
-        throw "错误的服务器: $ServerRule"
+    DeleteCache($ServerRule)
+    . .\ChangeClientPath.exe $ServerRule
+    if($LASTEXITCODE -ne 0) {
+        Write-Warning "ClientPath更改出错"
     }
 
     # （可选）覆写d3dx_user.ini
@@ -94,7 +87,7 @@ try {
     
     Write-Host "XXMI Launcher 已启动 (PID: $($process.Id))" -ForegroundColor Green
 
-    # 3. 等待1秒
+    # 3. 等待5秒
     Start-Sleep -Seconds 5
 
     # 4. 禁用防火墙
