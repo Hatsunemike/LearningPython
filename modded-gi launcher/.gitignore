@@ -2,4 +2,4 @@
 test.*
 ./d3dx_user.ini
 ./config.json
-.vscode
+.vscode/*
