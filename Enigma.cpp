@@ -9,6 +9,7 @@
 
 using std::string;
 using std::cerr;
+using std::cout;
 using std::endl;
 
 typedef unsigned int uint;
@@ -17,6 +18,8 @@ typedef uint vType;
 typedef uint ERRType;
 const ERRType NOERR = 0;
 const ERRType ERR_IndexOut = 1;
+
+std:: mt19937 rng(std:: time(0));
 
 class Rotor{
 protected:
@@ -29,8 +32,7 @@ public:
         f = new vType[num];
         for(int i=0;i<num;++i) f[i] = i;
         if(ranGen) {
-            std:: mt19937 rng(std:: time(0));
-        std:: shuffle(f, f+num, rng);
+            std:: shuffle(f, f+num, rng);
         }
         f_1 = new vType[num];
         for(int i=0;i<num;++i) {
@@ -130,8 +132,8 @@ public:
     void __print(const string tab = "") {
         int cnt=0;
         for(auto it = rotorList.begin(); it!=rotorList.end(); it++) {
-            printf("rotor index: %d\n", cnt);
-            printf("rotor object info: ");
+            cerr << tab << "rotor index: " << cnt << endl;
+            cerr << tab << "rotor object info: " << endl;
             (*it)->__print(tab+"  ");
         }
     }
@@ -150,7 +152,6 @@ private:
         if(ranGen) {
             char vis[chr_cnt];
             memset(vis, 0, sizeof(vis));
-            std:: mt19937 rng(time(0));
             std:: uniform_int_distribution<uint> dist(0,25);
             uint a,b,c;
             for(uint i=0;i<10;++i) {
@@ -170,7 +171,7 @@ private:
 public:
     Enigma(uint rotor_cnt = 3): rotors(){
         initPlugBoard();
-        // for(int i=0;i<rotor_cnt;++i)rotors.newRotor(chr_cnt, true);
+        for(int i=0;i<rotor_cnt;++i)rotors.newRotor(chr_cnt, true);
     }
 
     vType En_Decrypt(vType c) {
@@ -201,16 +202,16 @@ int main()
     cerr << "=========== (begin)e info ========" << endl;
     e.__print();
     cerr << "=========== (end)e info ==========" << endl;
-    char* s = "hellohappyworld";
-    printf("original string: %s\n",s);
-    uint len = strlen(s);
+    string s = "hellohappyworld";
+    cout << "original string: " << s << endl;
+    uint len = s.size();
     for(int i=0;i<len;++i)s[i] -= 'a';
     char* e_s = new char[len];
     for(int i=0;i<len;++i) {
         e_s[i] = e.En_Decrypt(s[i]) + 'a';
         e.rotateRotorGroup();
     }
-    printf("encypted string: %s\n", e_s);
+    cout << "encrypted string: " << e_s << endl;
     delete[] e_s;
     return 0;
 }
