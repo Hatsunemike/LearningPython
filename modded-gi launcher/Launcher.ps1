@@ -21,7 +21,10 @@ param(
     [string]$ServerRule = "CN",
 
     [Parameter(Mandatory = $false)]
-    [switch]$ConstOw
+    [switch]$ConstOw,
+
+    [Parameter(Mandatory = $false)]
+    [bool]$DelCache = $true
 )
 
 # 更改工作目录
@@ -48,7 +51,7 @@ try {
 
 # 定义常量
 $ControllerPath = Resolve-Path ".\FirewallRuleController.ps1"
-$FirewallRuleName = "原神 禁所有连接"
+$FirewallRuleName = "原神 禁主程序所有连接"
 if($ServerRule -eq "Inter") {
     $FirewallRuleName = "原神外服 禁所有连接"
 }
@@ -59,7 +62,9 @@ try {
 
     # 0. 清除缓存+修改游戏客户端路径
 
-    DeleteCache($ServerRule)
+    if($DelCache) {
+        . ".\AA-DeleteCache.exe"
+    }
     . .\ChangeClientPath.exe $ServerRule
     if($LASTEXITCODE -ne 0) {
         Write-Warning "ClientPath更改出错"
@@ -88,7 +93,7 @@ try {
     Write-Host "XXMI Launcher 已启动 (PID: $($process.Id))" -ForegroundColor Green
 
     # 3. 等待5秒
-    Start-Sleep -Seconds 5
+    Start-Sleep -Seconds 20
 
     # 4. 禁用防火墙
     # Write-Host "正在禁用防火墙规则: $FirewallRuleName..."
@@ -103,7 +108,7 @@ try {
     # (Mode == "NetOffLaunch-Imt") 频繁断网
     if ($Mode -eq "NetOffLaunch-Imt") {
         $NetOffImtSciptPath = ".\IntermittentBlocking.ps1"
-        & $NetOffImtSciptPath -RuleName $FirewallRuleName -ControllerPath $ControllerPath
+        & $NetOffImtSciptPath -RuleName $FirewallRuleName -ControllerPath $ControllerPath -ImtDuration 600
     }
 
     Write-Host "脚本执行完成" -ForegroundColor Green
