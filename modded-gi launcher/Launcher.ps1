@@ -21,7 +21,10 @@ param(
     [string]$ServerRule = "CN",
 
     [Parameter(Mandatory = $false)]
-    [switch]$ConstOw
+    [switch]$ConstOw,
+
+    [Parameter(Mandatory = $false)]
+    [bool]$DelCache = $true
 )
 
 # 更改工作目录
@@ -60,7 +63,9 @@ try {
 
     # 0. 清除缓存+修改游戏客户端路径
 
-    DeleteCache($ServerRule)
+    if($DelCache) {
+        . ".\AA-DeleteCache.exe"
+    }
     . .\ChangeClientPath.exe $ServerRule
     if($LASTEXITCODE -ne 0) {
         Write-Warning "ClientPath更改出错"

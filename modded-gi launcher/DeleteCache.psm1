@@ -16,7 +16,7 @@ function DeleteCache {
         try {
             Remove-Item -Path "$cachePath" -Recurse -ErrorAction Stop
         } catch [System.Management.Automation.ItemNotFoundException] {
-            Write-Warning "路径不存在：$cachePath"
+            # Write-Warning "路径不存在：$cachePath"
         }
     }
     Write-Host "DeleteCache: 删除缓存完成"
