@@ -39,6 +39,7 @@
         "utility": "cpp",
         "typeinfo": "cpp",
         "valarray": "cpp",
-        "list": "cpp"
+        "list": "cpp",
+        "string": "cpp"
     }
 }
