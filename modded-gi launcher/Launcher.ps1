@@ -47,11 +47,12 @@ try {
 }
 
 # 定义常量
-$ControllerPath = Resolve-Path ".\FirewallRuleController.ps1"
-$FirewallRuleName = "原神 禁所有连接"
-if($ServerRule -eq "Inter") {
-    $FirewallRuleName = "原神外服 禁所有连接"
-}
+# $ControllerPath = Resolve-Path ".\FirewallRuleController.ps1"
+# $FirewallRuleName = "原神 主程序禁所有连接"
+# if($ServerRule -eq "Inter") {
+#     $FirewallRuleName = "原神外服 禁所有连接"
+# }
+$NetAdapterName = "以太网"
 $XXMILaucherPath = Join-Path $configJson.XXMI_HOME "Resources\Bin\XXMI Launcher.exe"
 $XXMILaucherArgs = "--nogui --xxmi GIMI"
 
@@ -70,12 +71,8 @@ try {
         Overwrited3dxuser("Overwrite")
     }
 
-    # 1. 启动防火墙
-    # Write-Host "成功启用 $($rules.Count) 条防火墙规则" -ForegroundColor Green
-    & $ControllerPath -RuleName $FirewallRuleName -Action "Enable"
-    if ($LASTEXITCODE -ne 0) {
-        throw "防火墙启用失败，程序终止"
-    }
+    # 1. 断网
+    Disable-NetAdapter -Name $NetAdapterName -Confirm:$false
 
     # 2. 启动XXMI Launcher
     Write-Host "正在启动 XXMI Launcher..."
@@ -87,23 +84,33 @@ try {
     
     Write-Host "XXMI Launcher 已启动 (PID: $($process.Id))" -ForegroundColor Green
 
-    # 3. 等待5秒
-    Start-Sleep -Seconds 5
-
-    # 4. 禁用防火墙
-    # Write-Host "正在禁用防火墙规则: $FirewallRuleName..."
-    # $rules | Disable-NetFirewallRule -ErrorAction Stop
-    # Write-Host "成功禁用 $($rules.Count) 条防火墙规则" -ForegroundColor Green
-
-    & $ControllerPath -RuleName $FirewallRuleName -Action "Disable"
-    if ($LASTEXITCODE -ne 0) {
-        Write-Host "警告！防火墙禁用失败，需要手动禁用" -ForegroundColor Yellow
+    # 3. 等待至原神启动
+    $targetProcessName = "YuanShen"
+    if ($ServerRule -eq "Inter") {
+        $targetProcessName = "GenshinImpact"
     }
+    $targetWindowTitle = "原神"
+    $found = $false
+    $startTime = Get-Date
+    while($found -eq $false) {
+        $window = Get-Process | Where-Object {
+            $_.MainWindowTitle -like $targetWindowTitle -and $_.Name -eq $targetProcessName 
+        }
+        if($window) {
+            $timeCost = (Get-Date) - $startTime
+            Write-Host "找到主进程：${window.Name} (${window.Id})，用时 $timeCost"
+            Start-Sleep -Seconds 15
+            break
+        }
+    }
+
+    # 4. 联网
+    Enable-NetAdapter -Name $NetAdapterName -Confirm:$false
 
     # (Mode == "NetOffLaunch-Imt") 频繁断网
     if ($Mode -eq "NetOffLaunch-Imt") {
         $NetOffImtSciptPath = ".\IntermittentBlocking.ps1"
-        & $NetOffImtSciptPath -RuleName $FirewallRuleName -ControllerPath $ControllerPath
+        & $NetOffImtSciptPath -ImtDuration 3600 -NetAdapterName $NetAdapterName
     }
 
     Write-Host "脚本执行完成" -ForegroundColor Green

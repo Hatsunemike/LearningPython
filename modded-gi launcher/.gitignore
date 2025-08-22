@@ -1,4 +1,4 @@
 *.exe
 test.*
-./config.json
+config.json
 .vscode/*

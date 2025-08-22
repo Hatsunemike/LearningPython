@@ -6,13 +6,13 @@ p = 0.016
 n = 100
 dist = np.zeros((n,),dtype=np.float64)
 
-def drawTimesDist(dist: np.array, max_y: float, title: str) :
+def drawTimesDist(dist: np.ndarray, max_y: float, title: str) :
     length = dist.shape[0]
     fig = plt.figure(num=1, figsize=(1,1))
     ax = fig.add_subplot(111)
     ax.set_title(title,fontsize=40)
-    ax.set_xlim([0,length])
-    ax.set_ylim([0,max_y])
+    ax.set_xlim((0,length))
+    ax.set_ylim((0,max_y))
     # ax.scatter(np.arange(length), dist, color="b", linestyle="-")
     ax.plot(np.arange(length), dist, color="b", linestyle="-")
 
