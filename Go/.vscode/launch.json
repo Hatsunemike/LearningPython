@@ -1,0 +1,17 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Launch with input file",
+            "type": "go",
+            "request": "launch",
+            "mode": "auto",
+            "program": "${fileDirname}",
+            "output":"fileBasenameNoExtensio${fileBasenameNoExtension}",
+            "args": [],
+            "console": "externalTerminal",  // 关键：使用终端而不是调试控制台
+            "env": {},
+            "externalConsole": false
+        }
+    ]
+}

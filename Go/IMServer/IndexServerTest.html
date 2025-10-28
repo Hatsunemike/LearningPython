@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+
+<script>
+    var ws = new WebSocket("ws://locaohost:8080");
+    ws.onopen = function() {
+        console.log("WebSocket connection established");
+    };
+
+    ws.onmessage = function(event) {
+        var jsonPacket = JSON.parse(event.data);
+        // 将消息显示到页面上的 #messages 容器
+        if (jsonPacket.type = "receiveMessage") {
+            addMessage(jsonPacket)
+        }
+    };
+
+    function addMessage(message) {
+        var messagesDiv = document.getElementById('messages');
+        var p = document.createElement('p');
+        p.textContent = message.senderId+": "+message.content;
+        messagesDiv.appendChild(p);
+    }
+
+    function sendMessage() {
+        var msgInput = document.getElementById('msgToSend');
+        var receiverInput = document.getElementById('receiverId');
+        var message = {
+            type: "message",
+            content: msgInput.value,
+            to: receiverInput.value
+        };
+        ws.send(JSON.stringify(message));
+        msgInput.value = ''; // 发送后清空输入框
+    }
+
+</script>
+<body>
+    <input type="text" id="username" placeholder="请输入用户名">
+    <input type="password" id="password" placeholder="请输入密码">
+    <button onclick="login()">登录</button>
+
+    <input type="text" id="msgToSend" placeholder="请输入消息">
+    <input type="text" id="receiverId" placeholder="请输入接收者ID">
+    <button onclick="sendMessage()">发送消息</button>
+
+    <div id="messages"></div>
+</body>
