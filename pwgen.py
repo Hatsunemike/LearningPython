@@ -49,7 +49,7 @@ def TurnArgiStr(arg: tuple):
     else:
         ans = arg[0]
         for x in arg[1:] : ans += x
-        return x
+        return ans
 
 def argScaleException(wrong_arg: tuple) :
     print("There exists redundant numbers in argument \"{}\".".format(TurnArgiStr(wrong_arg)))
@@ -105,6 +105,7 @@ def printSettings() :
     elif with_eng == 1 : engstr = "lower"
     elif with_eng == 2 : engstr = "upper"
     elif with_eng == 3 : engstr = "lower and upper"
+    else : engstr = "unknown"
     print("with_letters:",engstr)
 
 import random

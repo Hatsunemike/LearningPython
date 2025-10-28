@@ -1,2 +1,5 @@
 tmpdata
 tmpdata/*
+pyrightconfig.json
+./output.xlsx
+test.*
