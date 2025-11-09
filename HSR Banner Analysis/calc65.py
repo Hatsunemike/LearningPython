@@ -99,7 +99,7 @@ def export_ans_to_excel(ans, expects, filename='output.xlsx'):
         ws['A1'].alignment = center_align
         
         # 设置列标题
-        col_headers = [''] + [f'{ncol-1}精' for ncol in range(6)]
+        col_headers = [''] + [f'{ncol}精' for ncol in range(6)]
         for col_idx, header in enumerate(col_headers, 1):
             cell = ws.cell(row=2, column=col_idx)
             cell.value = header
