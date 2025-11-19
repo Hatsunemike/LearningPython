@@ -3,6 +3,15 @@
     "python-envs.defaultPackageManager": "ms-python.python:conda",
     "python-envs.pythonProjects": [],
     "files.associations": {
-        "iostream": "cpp"
+        "iostream": "cpp",
+        "cstdio": "cpp",
+        "random": "cpp",
+        "cstdlib": "cpp",
+        "unordered_map": "cpp",
+        "typeinfo": "cpp",
+        "unordered_set": "cpp",
+        "ctime": "cpp",
+        "cstring": "cpp",
+        "ostream": "cpp"
     }
 }

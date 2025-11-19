@@ -9,5 +9,10 @@
 
 void Oula(char* isPrime, const int maxn);
 bool testMillarRabin();
-
+bool testMnumPow();
+bool testInv();
+bool testCipolla();
+bool testEmbedMessage();
+bool testFindGen();
+bool testMulPoints();
 #endif
