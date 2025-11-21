@@ -2,8 +2,9 @@
 #define MNUM_H
 
 #include <boost/multiprecision/cpp_int.hpp>
+#include <boost/multiprecision/gmp.hpp>
 
-typedef boost::multiprecision::cpp_int m_type;
+typedef boost::multiprecision::mpz_int m_type;
 
 class mnum {
     m_type x;
@@ -16,7 +17,7 @@ public:
 
     mnum pow(m_type k) const;
 
-    mnum(const m_type& _x = 0, const m_type& _p = int(1e9+7));
+    mnum(const m_type& _x = long(0), const m_type& _p = long(1e9+7));
     mnum(const mnum& other);
     mnum& operator=(const mnum& b);
     mnum& operator=(const m_type& b);

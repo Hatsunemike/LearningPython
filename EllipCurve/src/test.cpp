@@ -53,7 +53,7 @@ bool testMnumPow() {
         res = mnum(1, p);
         for(int j=0;j<p;++j) {
             mnum bres = b.pow(j);
-            printf("%lld ", bres.getX());
+            cout << bres.getX() << endl;
             if (bres != res) {
                 cerr << "\nError: pow(" << i << ", " << j << ") = " << res.getX()
                     << ", mnum.pow(" << i << ", " << j << ") = " << bres.getX() << endl;
@@ -95,6 +95,7 @@ bool testCipolla() {
     p <<= 89; p -= 1;
 
     int cnt = 0;
+    double start = clock(); start /= CLOCKS_PER_SEC;
     for(int i=1; i<=1000000; ++i) {
         mnum a = mnum(i, p);
         mnum b;
@@ -102,6 +103,10 @@ bool testCipolla() {
             ++cnt;
             if(b*b != a) {
                 cerr << "error: " << b.getX() << "*" << b.getX() << "!=" << a.getX() << endl;
+            }
+            if (cnt%20000 == 0) {
+                cout << "epoch: found " << cnt << " numbers."
+                << " time use: " << double(clock())/CLOCKS_PER_SEC-start << " s." << endl;
             }
         }
     }
@@ -114,7 +119,7 @@ bool testEmbedMessage() {
     m_type y;
     bool flag = e.getYbyX(65235, y);
     if(flag) {
-        printf("%lld\n", y);
+        cout << y << endl;
     } else {
         printf("Halo!\n");
     }
