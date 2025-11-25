@@ -27,11 +27,32 @@ bool Point::operator!=(const Point& b) const {
     return !((*this) == b);
 }
 
+Point Point::operator-() const {
+    return Point(x, -y);
+}
+
+// class ECC_Context
+
+ECC_Context ECC_Context_new() {
+    ECC_Context ctx;
+    ctx.a = 1;
+    ctx.b = 1;
+    ctx.p = int(1e9+7);
+    return ctx;
+}
+
 //class EllipticCurve
 
 mnum EllipticCurve::getA() {return this->a;}
 mnum EllipticCurve::getB() {return this->b;}
 m_type EllipticCurve::getP() {return this->a.getP();}
+ECC_Context EllipticCurve::getCTX() {
+    ECC_Context ctx;
+    ctx.a = a.getX();
+    ctx.b = b.getX();
+    ctx.p = a.getP();
+    return ctx;
+}
 
 EllipticCurve::EllipticCurve(const mnum& _a, const mnum& _b) {
     using std::cerr;
@@ -58,6 +79,11 @@ EllipticCurve::EllipticCurve(const mnum& _a, const mnum& _b) {
 EllipticCurve::EllipticCurve(const m_type& _a, const m_type& _b, const m_type& _p) {
     this->a = mnum(_a, _p);
     this->b = mnum(_b, _p);
+}
+
+EllipticCurve::EllipticCurve(const ECC_Context& ctx) {
+    this->a = mnum(ctx.a, ctx.p);
+    this->b = mnum(ctx.b, ctx.p);
 }
 
 bool EllipticCurve::checkPoint(const Point& P) const {
@@ -131,8 +157,8 @@ bool EllipticCurve::getYbyX(const m_type& x, m_type& y) const {
     return flag;
 }
 
-bool EllipticCurve::embedMessage(const m_type& msg, const int& k, m_type& res_x, m_type& res_y) const {
-    m_type m = msg*k;
+bool EllipticCurve::embedMessage(const m_type& msg , m_type& res_x, m_type& res_y, const int& k) const {
+    m_type m = msg*(k);
     m_type y;
     for(int j=0;j<k;++j) {
         if(getYbyX(m, y)) {
@@ -145,7 +171,11 @@ bool EllipticCurve::embedMessage(const m_type& msg, const int& k, m_type& res_x,
     return false;
 }
 
-m_type EllipticCurve::findLevel(const Point& p) const {
+m_type EllipticCurve::getMessage(const m_type& p_x, const int& k) {
+    return p_x/k;
+}
+
+m_type EllipticCurve::findLevelBrutely(const Point& p) const {
     m_type cnt = 0;
     Point res = p;
     boost:: unordered_set<Point, std::hash<Point> > s;
@@ -156,10 +186,11 @@ m_type EllipticCurve::findLevel(const Point& p) const {
     return cnt;
 }
 
-bool EllipticCurve::findGen(const m_type& level, Point& ans) const {
+bool EllipticCurve::findGenBrutely(const m_type& level, Point& ans) const {
+    std::cout << "findGenBrutely start: level:" << level << std::endl;
     mnum x(0, a.getP());
     mnum y;
-    for (int n=1; n<a.getP(); ++n) {
+    for (m_type n=1; n<a.getP(); ++n) {
         bool flag = getYbyX(x, y);
         if(flag) {
             Point p(x,y);
@@ -169,6 +200,8 @@ bool EllipticCurve::findGen(const m_type& level, Point& ans) const {
                 ++cnt;
                 if(cnt >= level) {
                     ans = p;
+                    std::cout << "findGenBrutely: found a generator: ("
+                        << p.x.getX() << "," << p.y.getX() << ")." << std::endl;
                     return true;
                 }
             }
@@ -184,5 +217,12 @@ bool EllipticCurve::findGen(const m_type& level, Point& ans) const {
         }
         x = x + 1;
     }
+    std::cout << "findGenBrutely: cann't find a generator." << std::endl;
     return false;
 }
+
+/* The implementation of some commonly used ECC in cryptography. */
+
+secp256k1Curve::secp256k1Curve(const m_type& p) : EllipticCurve(1, 1, p) {}
+
+secp256k1Curve::~secp256k1Curve() {}

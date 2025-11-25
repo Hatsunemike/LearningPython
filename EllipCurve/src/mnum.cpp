@@ -31,14 +31,12 @@ mnum mnum::pow(m_type k) const {
     else if(k==1) {
         return *this;
     }
-    int maxx = sizeof(m_type)*8;
     mnum res = *this;
     mnum ans(1, this->getP());
-    for (int i=0;i<maxx;++i) {
+    while(k>0) {
         if(k&1) {
             ans *= res;
         }
-        if(!k) break;
         k >>= 1;
         res = res*res;
     }

@@ -5,6 +5,8 @@
 #include <boost/functional/hash.hpp>
 #include <boost/unordered_set.hpp>
 
+/* Point class is used to store points on the ECC. */
+
 class Point {
 public:
     mnum x;
@@ -16,6 +18,7 @@ public:
     Point& operator=(const Point& b);
     bool operator==(const Point& b) const;
     bool operator!=(const Point& b) const;
+    Point operator-() const;
 };
 
 namespace std{
@@ -30,6 +33,21 @@ namespace std{
     };
 }
 
+/** 
+ * ECC Context stores all information that should be assigned manually.
+ * 
+ * It includes (a,b,p) which identify a curve, 
+ * and the encrypt exponent $k$ to control the encryption.
+ */
+
+struct ECC_Context{
+    m_type a;
+    m_type b;
+    m_type p;
+};
+
+ECC_Context ECC_Context_new();
+
 class EllipticCurve {
 private:
     mnum a;
@@ -38,11 +56,14 @@ public:
     mnum getA();
     mnum getB();
     m_type getP();
+    ECC_Context getCTX();
 
     // This constructor isn't recommended.
     EllipticCurve(const mnum& _a, const mnum& _b);
     // Use this as possible. 
     EllipticCurve(const m_type& _a, const m_type& _b, const m_type& _p);
+    // Using Context to construct
+    EllipticCurve(const ECC_Context &ctx);
 
     bool checkPoint(const Point& P) const;
     Point addPoints(const Point& P, const Point& Q) const;
@@ -50,8 +71,18 @@ public:
     bool getYbyX(const mnum& x, mnum &y) const;
     bool getYbyX(const m_type& x, m_type& y) const;
     
-    bool embedMessage(const m_type& msg, const int& k, m_type& res_x, m_type& res_y) const;
-    m_type findLevel(const Point& p) const;
-    bool findGen(const m_type& level, Point& ans) const;
+    bool embedMessage(const m_type& msg, m_type& res_x, m_type& res_y, const int& k = 30) const;
+    m_type getMessage(const m_type& p_x, const int& k = 30);
+    
+    m_type findLevelBrutely(const Point& p) const;
+    bool findGenBrutely(const m_type& level, Point& ans) const;
+};
+
+/* The implementation of some commonly used ECC in cryptography. */
+
+class secp256k1Curve: public EllipticCurve {
+public:
+    secp256k1Curve(const m_type& p);
+    ~secp256k1Curve();
 };
 #endif // ELLIPTICCURVE_H
