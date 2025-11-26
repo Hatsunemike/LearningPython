@@ -147,6 +147,45 @@ bool testFindGen() {
     return true;
 }
 
+bool testAddPoints() {
+    int p = 23;
+    EllipticCurve e(1, 1, p);
+    Point P(mnum(3, p), mnum(10, p)), Q(mnum(9, p), (mnum(7, p)));
+
+    Point ans(mnum(17, p), mnum(20, p));
+
+    Point res = e.addPoints(P, Q);
+    if(ans != res) {
+        cerr << "Cann't pass P+Q test." << endl;
+        return false;
+    }
+
+    p = 7;
+    e = EllipticCurve(-2, -3, p);
+    P = Point(mnum(3, p), mnum(2, p));
+    int ps[9][2] = {
+        {2, 6},
+        {4, 2},
+        {0, 5},
+        {5, 0},
+        {0, 2},
+        {4, 5},
+        {2, 1},
+        {3, 5},
+        {1, 2}
+    };
+    Point now = P;
+    for(int i=0; i<9;++i) {
+        now = e.addPoints(now, P);
+        if(now.x.getX() != ps[i][0] || now.y.getX() != ps[i][1]) {
+            cerr << i+2 << " P is (" << ps[i][0] << "," << ps[i][1] << "), not ("
+                << now.x.getX() << "," << now.y.getX() << ")." << endl;
+            return false;
+        }
+    }
+    return true;
+}
+
 bool testMulPoints() {
     int p = 7;
     EllipticCurve e(-2, -3, p);

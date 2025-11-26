@@ -76,6 +76,7 @@ public:
     
     m_type findLevelBrutely(const Point& p) const;
     bool findGenBrutely(const m_type& level, Point& ans) const;
+    m_type countPointsBrutely();
 };
 
 /* The implementation of some commonly used ECC in cryptography. */

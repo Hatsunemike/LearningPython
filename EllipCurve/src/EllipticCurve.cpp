@@ -90,9 +90,6 @@ bool EllipticCurve::checkPoint(const Point& P) const {
     if (P.x.getP() != P.y.getP()) {
         return false;
     }
-    if (P.y.getX() == 0) {   // The y cann't be zero to make sure each two points can be added.
-        return false;
-    }
     mnum left = P.y * P.y;
     mnum right = P.x * P.x * P.x + a * P.x + b;
     return left == right;
@@ -102,7 +99,12 @@ Point EllipticCurve::addPoints(const Point& P, const Point& Q) const {
     // printf("(%lld, %lld) + (%lld, %lld) = ", 
     //     P.x.getX(), P.y.getX(),
     //     Q.x.getX(), Q.y.getX());
+    if (!checkPoint(P)) return Q;
+    if (!checkPoint(Q)) return P;
     if (P.x == Q.x && P.y == Q.y) {
+        if(P.x.getX() == 0) {
+            return Point(P.x, P.y+1); // Construct O
+        }
         mnum lambda = (3 * P.x * P.x + a) / (2 * P.y);
         mnum xR = lambda * lambda - 2 * P.x;
         mnum yR = lambda * (P.x - xR) - P.y;
@@ -120,10 +122,12 @@ Point EllipticCurve::addPoints(const Point& P, const Point& Q) const {
 }
 
 Point EllipticCurve::mulPoint(const Point& P, const m_type& k) const {
-    const Point mp = Point(-P.x, P.y);
-    const Point O = addPoints(P, mp);
-    if(k<0) return mulPoint(mp, -k);
-    if(k==0) return O;
+    if(!checkPoint(P)) return P;
+    if(k<0) return mulPoint(-P, -k);
+    if(k==0) {
+        const Point O = addPoints(P, -P);
+        return O;
+    }
     if(k==1) return P;
     Point res = P;
     Point ans = res;
@@ -145,6 +149,10 @@ Point EllipticCurve::mulPoint(const Point& P, const m_type& k) const {
 
 bool EllipticCurve::getYbyX(const mnum &x, mnum &y) const {
     mnum y2 = x*x*x + a*x + b;
+    if(y2.getX() == 0) {
+        y.setX(0);
+        return true;
+    }
     bool flag = Cipolla(y2, y);
     return flag;
 }
@@ -178,12 +186,12 @@ m_type EllipticCurve::getMessage(const m_type& p_x, const int& k) {
 m_type EllipticCurve::findLevelBrutely(const Point& p) const {
     m_type cnt = 0;
     Point res = p;
-    boost:: unordered_set<Point, std::hash<Point> > s;
-    for(; checkPoint(res) && (s.find(res) == s.end()); res = addPoints(res, p)) {
-        s.insert(res);
+    //boost:: unordered_set<Point, std::hash<Point> > s;
+    for(; checkPoint(res)/* && (s.find(res) == s.end())*/; res = addPoints(res, p)) {
+        // s.insert(res);
         ++cnt;
     }
-    return cnt;
+    return cnt+1; // O is in the group too.
 }
 
 bool EllipticCurve::findGenBrutely(const m_type& level, Point& ans) const {
@@ -219,6 +227,19 @@ bool EllipticCurve::findGenBrutely(const m_type& level, Point& ans) const {
     }
     std::cout << "findGenBrutely: cann't find a generator." << std::endl;
     return false;
+}
+
+m_type EllipticCurve::countPointsBrutely() {
+    const m_type p = a.getP();
+    m_type cnt = 0;
+    for(m_type x=0; x<p; ++x) {
+        m_type y;
+        if(getYbyX(x, y)) {
+            ++cnt;
+            if(p-y != y) ++cnt;
+        }
+    }
+    return cnt;
 }
 
 /* The implementation of some commonly used ECC in cryptography. */

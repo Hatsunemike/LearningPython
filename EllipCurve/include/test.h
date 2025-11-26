@@ -15,6 +15,7 @@ bool testInv();
 bool testCipolla();
 bool testEmbedMessage();
 bool testFindGen();
+bool testAddPoints();
 bool testMulPoints();
 
 /* ElGamel Cryptology Test */
