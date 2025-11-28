@@ -10,6 +10,9 @@ public:
     ECC_Context eCtx;
     m_type x;
     int k; // HashToX exponent
+
+    std::vector<u_char> serialize() const;
+    size_t deserialize(const std::vector<u_char>& data);
 };
 
 class ElGamelPK{
@@ -21,7 +24,19 @@ public:
     m_type Yy;
     m_type maxu; // the maximum u that sender can use.
     int k; // HashToX exponent
+
+    std::vector<u_char> serialize() const;
+    size_t deserialize(const std::vector<u_char>& data);
 };
+
+/**
+ * The file/memory functions
+ */
+size_t ElGamel_SK2File(FILE* f, const ElGamelSK& sk);
+size_t ElGamel_PK2File(FILE* f, const ElGamelPK& pk);
+
+bool ElGamel_File2SK(FILE* f, ElGamelSK& sk);
+bool ElGamel_File2PK(FILE* f, ElGamelPK& pk);
 
 class ElGamelCtx{
 public:

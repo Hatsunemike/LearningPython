@@ -1,4 +1,5 @@
 #include "EllipticCurve.h"
+#include "serial.h"
 #include <iostream>
 
 // class Point
@@ -32,6 +33,44 @@ Point Point::operator-() const {
 }
 
 // class ECC_Context
+
+std::vector<u_char> ECC_Context::serialize() const {
+    std::vector<u_char> ret;
+    std::vector<u_char> tmp;
+    tmp = serialize_mpz(p);
+    ret.insert(ret.end(), tmp.begin(), tmp.end());
+    tmp = serialize_mpz(a);
+    ret.insert(ret.end(), tmp.begin(), tmp.end());
+    tmp = serialize_mpz(b);
+    ret.insert(ret.end(), tmp.begin(), tmp.end());
+    return ret;
+}
+
+size_t ECC_Context::deserialize(const std::vector<u_char>& data) {
+    size_t now = 0;
+    now += deserialize_mpz(p, data);
+    if(now == 0){
+        std::cerr << "Error: ECC_Context: deserialize p failed." << std::endl;
+        return 0;
+    }
+
+    size_t add = 0;
+    add = deserialize_mpz(a, std::vector<u_char>(data.begin()+now, data.end()));
+    if(add == 0) {
+        std::cerr << "Error: ECC Context: deserialize a failed." << std::endl;
+        return 0;
+    }
+    now += add;
+
+    add = deserialize_mpz(b, std::vector<u_char>(data.begin()+now, data.end()));
+    if(add == 0) {
+        std::cerr << "Error: ECC Context: deserialize b failed." << std::endl;
+        return 0;
+    }
+    now += add;
+
+    return now;
+}
 
 ECC_Context ECC_Context_new() {
     ECC_Context ctx;

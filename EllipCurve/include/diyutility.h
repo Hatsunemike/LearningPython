@@ -13,6 +13,7 @@ namespace diy{
     int demo_calcplus(int argc, char* argv[]);
     void e_1_1_23_new(EllipticCurve& e);
     void e__2__3_7_new(EllipticCurve& e, Point& G);
+    void print_hex(const m_type& a, FILE* of = stderr);
 }
 
 #endif // HEADER_FILE_H

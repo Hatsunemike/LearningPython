@@ -1,4 +1,5 @@
 #include "test.h"
+#include "ElGamel.h"
 
 using std::cout;
 using std::endl;
@@ -35,5 +36,73 @@ bool testElGamel() {
     auto res_msg = ElGamelDecrypt(sk, enc_msg);
     cout << "msg:     " << msg     << endl;
     cout << "res_msg: " << res_msg << endl;
+    return true;
+}
+
+bool testSerialization() {
+    ElGamelGenerator g;
+    ElGamelSK sk;
+    ElGamelPK pk;
+
+    g.genKey(sk, pk);
+
+    auto sks = sk.serialize();
+    ElGamelSK sk2;
+    sk2.deserialize(sks);
+    auto sks2 = sk2.serialize();
+
+    if(sks != sks2) {
+        cout << "pri-key serialize and deserialize test failed." << endl;
+        return false;
+    }
+
+    auto pks = pk.serialize();
+    ElGamelPK pk2;
+    pk2.deserialize(pks);
+    auto pks2 = pk2.serialize();
+
+    if(pks != pks2) {
+        cout << "pub-key serialize and deserialize test failed." << endl;
+        return false;
+    }
+
+    cout << "serialization test passed." << endl;
+    return true;
+}
+
+bool testK2F_F2K() {
+    ElGamelGenerator g;
+    ElGamelSK sk;
+    ElGamelPK pk;
+    g.genKey(sk, pk);
+
+    FILE* skf = fopen("./elgamel_sk.key", "wb");
+    FILE* pkf = fopen("./elgamel_pk.key", "wb");
+
+    ElGamel_SK2File(skf, sk);
+    ElGamel_PK2File(pkf, pk);
+
+    fclose(skf);
+    fclose(pkf);
+
+    skf = fopen("./elgamel_sk.key", "rb");
+    pkf = fopen("./elgamel_pk.key", "rb");
+
+    ElGamelSK sk2;
+    ElGamelPK pk2;
+
+    ElGamel_File2SK(skf, sk2);
+    ElGamel_File2PK(pkf, pk2);
+
+    if(sk.serialize() != sk2.serialize() || pk.serialize() != pk2.serialize()) {
+        fprintf(stderr, "test K2F_F2K failed.\n");
+        perror("file error: ");
+        return false;
+    }
+
+    fclose(skf);
+    fclose(pkf);
+
+    fprintf(stderr, "test K2F_F2K passed.\n");
     return true;
 }

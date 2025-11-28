@@ -4,6 +4,7 @@
 #include "mnum.h"
 #include <boost/functional/hash.hpp>
 #include <boost/unordered_set.hpp>
+#include <vector>
 
 /* Point class is used to store points on the ECC. */
 
@@ -44,7 +45,32 @@ struct ECC_Context{
     m_type a;
     m_type b;
     m_type p;
+
+    /**
+     * serilaize format:
+     * <len_p (1 Byte)> <p> <len_a (1 Byte)> <a> <len_b (1 Byte)> <b>
+     * p, a, b use the `serialize_mpz` method.
+     */
+    std::vector<u_char> serialize() const;
+    /**
+     * deserialize return the bytes number it reads.
+     * return 0, means error.
+     */
+    size_t deserialize(const std::vector<u_char>& data) ;
 };
+
+/**
+ * serialize format:
+ * <len_n (1 byte)> <sign byte> <mpz_export(n)>
+ * `len_n` is a unsigned interger, declare the length of `n` = `len_n` bytes = `len_n` * 8 bits.
+ * If `n` is positive, <sign byte> is `0x00`, otherwise `0xff`.
+ */
+std::vector<u_char> serialize_mpz(const m_type& n);
+/**
+ * deserialize return the bytes number it reads.
+ * return 0, means error.
+ */
+size_t deserialize(m_type&n, const std::vector<u_char>& data);
 
 ECC_Context ECC_Context_new();
 

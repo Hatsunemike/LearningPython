@@ -1,9 +1,227 @@
 #include "ElGamel.h"
 #include "bigprime.h"
+#include "serial.h"
 #include <chrono>
 
 using std::cerr;
 using std::endl;
+
+/* pri-key , pub-key serilize and deserialize functions. */
+
+std::vector<u_char> ElGamelSK::serialize() const {
+    std::vector<u_char> ret;
+    // serialize eCtx
+    auto t = eCtx.serialize();
+    ret.insert(ret.end(), t.begin(), t.end());
+
+    // serialize x
+    t = serialize_mpz(x);
+    ret.insert(ret.end(), t.begin(), t.end());
+
+    // serialize k
+    t = serialize_int(k);
+    ret.insert(ret.end(), t.begin(), t.end());
+
+    return ret;
+}
+
+size_t ElGamelSK::deserialize(const std::vector<u_char>& data) {
+    size_t now = 0;
+    size_t rd_bytes;
+
+    rd_bytes = eCtx.deserialize(data);
+    if(rd_bytes == 0) {
+        std::cerr << "Error: ElGamelSK.deserialize: eCtx.deserialize failed" << std::endl;
+        return 0;
+    }
+    now += rd_bytes;
+
+    rd_bytes = deserialize_mpz(x, std::vector<u_char>(data.begin()+now, data.end()));
+    if(rd_bytes == 0) {
+        std::cerr << "Error: ElGamelSK.deserialize: private key x deserialize failed."
+            << std::endl;
+        return 0;
+    }
+    now += rd_bytes;
+
+    deserialize_int(k, std::vector<u_char>(data.begin()+now, data.end()));
+    now += 4;
+
+    return now;
+}
+
+std::vector<u_char> ElGamelPK::serialize() const {
+    std::vector<u_char> ret;
+    std::vector<u_char> t;
+
+    t = eCtx.serialize();
+    ret.insert(ret.end(), t.begin(), t.end());
+
+    t = serialize_mpz(Gx);
+    ret.insert(ret.end(), t.begin(), t.end());
+
+    t = serialize_mpz(Gy);
+    ret.insert(ret.end(), t.begin(), t.end());
+
+    t = serialize_mpz(Yx);
+    ret.insert(ret.end(), t.begin(), t.end());
+
+    t = serialize_mpz(Yy);
+    ret.insert(ret.end(), t.begin(), t.end());
+
+    t = serialize_mpz(maxu);
+    ret.insert(ret.end(), t.begin(), t.end());
+
+    t = serialize_int(k);
+    ret.insert(ret.end(), t.begin(), t.end());
+    
+    return ret;
+}
+
+size_t ElGamelPK::deserialize(const std::vector<u_char>& data) {
+    size_t now = 0;
+    size_t add = 0;
+    std::vector<u_char> tmp;
+
+    add = eCtx.deserialize(data);
+    if(add == 0) goto err_process;
+    now += add;
+
+    tmp.assign(data.begin()+now, data.end());
+    add = deserialize_mpz(Gx,tmp);
+    if(add == 0) goto err_process;
+    now += add;
+
+    tmp.assign(data.begin()+now, data.end());
+    add = deserialize_mpz(Gy,tmp);
+    if(add == 0) goto err_process;
+    now += add;
+
+    tmp.assign(data.begin()+now, data.end());
+    add = deserialize_mpz(Yx,tmp);
+    if(add == 0) goto err_process;
+    now += add;
+
+    tmp.assign(data.begin()+now, data.end());
+    add = deserialize_mpz(Yy,tmp);
+    if(add == 0) goto err_process;
+    now += add;
+
+    tmp.assign(data.begin()+now, data.end());
+    add = deserialize_mpz(maxu,tmp);
+    if(add == 0) goto err_process;
+    now += add;
+
+    tmp.assign(data.begin()+now, data.end());
+    add = deserialize_int(k,tmp);
+    if(add == 0) goto err_process;
+    now += add;
+
+    return now;
+
+err_process:
+    std::cerr << "Error: ElGamelPK: deserialize failed." << endl;
+    return 0;
+}
+
+/**
+ * file/memory transmitting functions.
+ */
+
+const size_t KF_BUFFER_SIZE = 2048;
+
+#include <vector>
+#include <cstdio>
+#include <algorithm> // std::min
+
+size_t ElGamel_SK2File(FILE* f, const ElGamelSK& sk) {
+    const std::vector<u_char>& ss = sk.serialize();
+    size_t ss_len = ss.size();
+
+    size_t total_written = 0;
+    u_char buf[KF_BUFFER_SIZE];
+
+    for (size_t offset = 0; offset < ss_len; offset += KF_BUFFER_SIZE) {
+        size_t chunk_size = std::min(KF_BUFFER_SIZE, ss_len - offset);
+        std::copy(ss.begin() + offset, ss.begin() + offset + chunk_size, buf);
+        size_t written = fwrite(buf, sizeof(u_char), chunk_size, f);
+        if (written != chunk_size) {
+            perror("fwrite failed");
+            return total_written;
+        }
+        total_written += written;
+    }
+    
+    return total_written;
+}
+
+size_t ElGamel_PK2File(FILE* f, const ElGamelPK& pk) {
+    const std::vector<u_char>& ss = pk.serialize();
+    size_t ss_len = ss.size();
+
+    size_t total_written = 0;
+    u_char buf[KF_BUFFER_SIZE];
+
+    for (size_t offset = 0; offset < ss_len; offset += KF_BUFFER_SIZE) {
+        size_t chunk_size = std::min(KF_BUFFER_SIZE, ss.size() - offset);
+        std::copy(ss.begin() + offset, ss.begin() + offset + chunk_size, buf);
+        
+        size_t written = fwrite(buf, sizeof(u_char), chunk_size, f);
+        if (written != chunk_size) {
+            perror("fwrite failed");
+            return total_written;
+        }
+        total_written += written;
+    }
+    
+    return total_written;
+}
+
+bool ElGamel_File2SK(FILE* f, ElGamelSK& sk) {
+    std::vector<u_char> data;
+    u_char buf[KF_BUFFER_SIZE];
+    size_t read_bytes;
+
+    while ((read_bytes = fread(buf, sizeof(u_char), KF_BUFFER_SIZE, f)) > 0) {
+        data.insert(data.end(), buf, buf + read_bytes);
+    }
+
+    if (ferror(f)) {
+        perror("fread failed");
+        return false;
+    }
+
+    size_t rd_bytes = sk.deserialize(data);
+    if(rd_bytes == 0) {
+        fprintf(stderr, "Error: ElGamel_File2SK: load pri-key failed.");
+        return false;
+    }
+
+    return true;
+}
+
+bool ElGamel_File2PK(FILE* f, ElGamelPK& pk) {
+    std::vector<u_char> data;
+    u_char buf[KF_BUFFER_SIZE];
+    size_t read_bytes;
+
+    while ((read_bytes = fread(buf, sizeof(u_char), KF_BUFFER_SIZE, f)) > 0) {
+        data.insert(data.end(), buf, buf + read_bytes);
+    }
+
+    if (ferror(f)) {
+        perror("fread failed");
+        return false;
+    }
+
+    size_t rd_bytes = pk.deserialize(data);
+    if(rd_bytes == 0) {
+        fprintf(stderr, "Error: ElGamel_File2PK: load pub-key failed.");
+        return false;
+    }
+
+    return true;
+}
 
 /* Encryptor and Decryptor */
 
@@ -95,6 +313,7 @@ ElGamelCtx ElGamelCtx_secp256k1() {
     ctx.Gx = readFromArray(Gx_arr, 32);
     ctx.Gy = readFromArray(Gy_arr, 32);
     ctx.level = readFromArray(level_arr, 32);
+    ctx.k = 30;
     
     return ctx;
 }
