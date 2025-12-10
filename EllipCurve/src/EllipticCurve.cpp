@@ -1,5 +1,6 @@
 #include "EllipticCurve.h"
 #include "serial.h"
+#include "streamio.h"
 #include <iostream>
 
 // class Point
@@ -70,6 +71,28 @@ size_t ECC_Context::deserialize(const std::vector<u_char>& data) {
     now += add;
 
     return now;
+}
+
+int ECC_Context::writeTo(FILE* f) const {
+    int ret;
+    ret = mystream::write_mpz(f, p);
+    if(ret < 1) return ret;
+    ret = mystream::write_mpz(f, a);
+    if(ret < 1) return ret;
+    ret = mystream::write_mpz(f, b);
+    if(ret < 1) return ret;
+    return 1;
+}
+
+int ECC_Context::readFrom(FILE* f) {
+    int ret;
+    ret = mystream::read_mpz(f, p);
+    if(ret < 1) return ret;
+    ret = mystream::read_mpz(f, a);
+    if(ret < 1) return ret;
+    ret = mystream::read_mpz(f, b);
+    if(ret < 1) return ret;
+    return 1;
 }
 
 ECC_Context ECC_Context_new() {

@@ -5,6 +5,8 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_FLAGS "-Wall -Wextra -O2")
 include_directories(PRIVATE include)
 
+find_package(Boost REQUIRED COMPONENTS filesystem system random)
+
 file(GLOB COMMON_SOURCES "src/*.cpp" "src/_*/*.cpp")
 
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/tests")
@@ -19,8 +21,8 @@ endif()
 if(EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/src/elgamel")
     file(GLOB ELGAMEL_SOURCES "src/elgamel/*.cpp")
     add_executable(elgamel
-        ${COMMON-SOURCES}
+        ${COMMON_SOURCES}
         ${ELGAMEL_SOURCES}
     )
-    target_link_libraries(elgamel ssl crypto gmp)
+    target_link_libraries(elgamel ssl crypto gmp ${Boost_LIBRARIES})
 endif()

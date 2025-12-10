@@ -57,6 +57,9 @@ struct ECC_Context{
      * return 0, means error.
      */
     size_t deserialize(const std::vector<u_char>& data) ;
+
+    int writeTo(FILE* f)const;
+    int readFrom(FILE* f);
 };
 
 /**

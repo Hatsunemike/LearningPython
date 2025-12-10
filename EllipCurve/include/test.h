@@ -23,6 +23,7 @@ bool testMulPoints();
 bool testElGamel();
 bool testSerialization();
 bool testK2F_F2K();
+bool testFileEncDec();
 
 /* OpenSSL EVP API Test */
 int CalcFileDigest(const char* filedir, const char* algo_name, u_char* md5ans, u_int* md5len);

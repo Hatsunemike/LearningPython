@@ -1,10 +1,12 @@
 #include "ElGamel.h"
 #include "bigprime.h"
 #include "serial.h"
+#include "streamio.h"
 #include <chrono>
 
 using std::cerr;
 using std::endl;
+namespace ms = mystream;
 
 /* pri-key , pub-key serilize and deserialize functions. */
 
@@ -48,6 +50,28 @@ size_t ElGamelSK::deserialize(const std::vector<u_char>& data) {
     now += 4;
 
     return now;
+}
+
+int ElGamelSK::writeTo(FILE* f) const {
+    int ret;
+    ret = eCtx.writeTo(f);
+    if(ret < 1) return ret;
+    ret = ms::write_mpz(f, x);
+    if(ret < 1) return ret;
+    ret = ms::write_int(f, k);
+    if(ret < 1) return ret;
+    return 1;
+}
+
+int ElGamelSK::readFrom(FILE* f) {
+    int ret;
+    ret = eCtx.readFrom(f);
+    if(ret < 1) return ret;
+    ret = ms::read_mpz(f, x);
+    if(ret < 1) return ret;
+    ret = ms::read_int(f, k);
+    if(ret < 1) return ret;
+    return 1;
 }
 
 std::vector<u_char> ElGamelPK::serialize() const {
@@ -124,6 +148,44 @@ err_process:
     return 0;
 }
 
+int ElGamelPK::writeTo(FILE* f) const {
+    int ret;
+    ret = eCtx.writeTo(f);
+    if(ret < 1) return ret;
+    ret = ms::write_mpz(f, Gx);
+    if(ret < 1) return ret;
+    ret = ms::write_mpz(f, Gy);
+    if(ret < 1) return ret;
+    ret = ms::write_mpz(f, Yx);
+    if(ret < 1) return ret;
+    ret = ms::write_mpz(f, Yy);
+    if(ret < 1) return ret;
+    ret = ms::write_mpz(f, maxu);
+    if(ret < 1) return ret;
+    ret = ms::write_int(f, k);
+    if(ret < 1) return ret;
+    return 1;
+}
+
+int ElGamelPK::readFrom(FILE* f) {
+    int ret;
+    ret = eCtx.readFrom(f);
+    if(ret < 1) return ret;
+    ret = ms::read_mpz(f, Gx);
+    if(ret < 1) return ret;
+    ret = ms::read_mpz(f, Gy);
+    if(ret < 1) return ret;
+    ret = ms::read_mpz(f, Yx);
+    if(ret < 1) return ret;
+    ret = ms::read_mpz(f, Yy);
+    if(ret < 1) return ret;
+    ret = ms::read_mpz(f, maxu);
+    if(ret < 1) return ret;
+    ret = ms::read_int(f, k);
+    if(ret < 1) return ret;
+    return 1;
+}
+
 /**
  * file/memory transmitting functions.
  */
@@ -134,66 +196,65 @@ const size_t KF_BUFFER_SIZE = 2048;
 #include <cstdio>
 #include <algorithm> // std::min
 
-size_t ElGamel_SK2File(FILE* f, const ElGamelSK& sk) {
-    const std::vector<u_char>& ss = sk.serialize();
-    size_t ss_len = ss.size();
+// vector<u_char> - file transformation
 
-    size_t total_written = 0;
+bool read_u_char_vec(FILE* f, std::vector<u_char>& v) {
     u_char buf[KF_BUFFER_SIZE];
 
-    for (size_t offset = 0; offset < ss_len; offset += KF_BUFFER_SIZE) {
-        size_t chunk_size = std::min(KF_BUFFER_SIZE, ss_len - offset);
-        std::copy(ss.begin() + offset, ss.begin() + offset + chunk_size, buf);
-        size_t written = fwrite(buf, sizeof(u_char), chunk_size, f);
-        if (written != chunk_size) {
-            perror("fwrite failed");
-            return total_written;
-        }
-        total_written += written;
+    v.clear();
+    size_t rd_bytes;
+    while((rd_bytes = fread(buf, sizeof(u_char), KF_BUFFER_SIZE, f)) > 0) {
+        v.insert(v.end(), buf, buf+rd_bytes);
     }
-    
-    return total_written;
+
+    if (ferror(f)) {
+        perror("read_u_char_vec:: read file failed.");
+        return false;
+    }
+
+    return true;
 }
 
-size_t ElGamel_PK2File(FILE* f, const ElGamelPK& pk) {
-    const std::vector<u_char>& ss = pk.serialize();
-    size_t ss_len = ss.size();
+bool write_u_char_vec(FILE* f, const std::vector<u_char>& v) {
+    size_t v_len = v.size();
 
-    size_t total_written = 0;
     u_char buf[KF_BUFFER_SIZE];
 
-    for (size_t offset = 0; offset < ss_len; offset += KF_BUFFER_SIZE) {
-        size_t chunk_size = std::min(KF_BUFFER_SIZE, ss.size() - offset);
-        std::copy(ss.begin() + offset, ss.begin() + offset + chunk_size, buf);
+    for (size_t offset = 0; offset < v_len; offset += KF_BUFFER_SIZE) {
+        size_t chunk_size = std::min(KF_BUFFER_SIZE, v.size() - offset);
+        std::copy(v.begin() + offset, v.begin() + offset + chunk_size, buf);
         
         size_t written = fwrite(buf, sizeof(u_char), chunk_size, f);
         if (written != chunk_size) {
             perror("fwrite failed");
-            return total_written;
+            return false;
         }
-        total_written += written;
     }
     
-    return total_written;
+    return true;
+}
+
+size_t ElGamel_SK2File(FILE* f, const ElGamelSK& sk) {
+    const std::vector<u_char>& ss = sk.serialize();
+    return write_u_char_vec(f, ss);
+}
+
+size_t ElGamel_PK2File(FILE* f, const ElGamelPK& pk) {
+    const std::vector<u_char>& ss = pk.serialize();
+    return write_u_char_vec(f, ss);
 }
 
 bool ElGamel_File2SK(FILE* f, ElGamelSK& sk) {
     std::vector<u_char> data;
-    u_char buf[KF_BUFFER_SIZE];
-    size_t read_bytes;
-
-    while ((read_bytes = fread(buf, sizeof(u_char), KF_BUFFER_SIZE, f)) > 0) {
-        data.insert(data.end(), buf, buf + read_bytes);
-    }
-
-    if (ferror(f)) {
-        perror("fread failed");
+    bool flag = read_u_char_vec(f, data);
+    if(!flag) {
+        fprintf(stderr, "Error: ElGamel_File2SK: read file failed.");
         return false;
     }
 
     size_t rd_bytes = sk.deserialize(data);
     if(rd_bytes == 0) {
-        fprintf(stderr, "Error: ElGamel_File2SK: load pri-key failed.");
+        fprintf(stderr, "Error: ElGamel_File2SK: deserialize pri-key failed.");
         return false;
     }
 
@@ -202,74 +263,245 @@ bool ElGamel_File2SK(FILE* f, ElGamelSK& sk) {
 
 bool ElGamel_File2PK(FILE* f, ElGamelPK& pk) {
     std::vector<u_char> data;
-    u_char buf[KF_BUFFER_SIZE];
-    size_t read_bytes;
-
-    while ((read_bytes = fread(buf, sizeof(u_char), KF_BUFFER_SIZE, f)) > 0) {
-        data.insert(data.end(), buf, buf + read_bytes);
-    }
-
-    if (ferror(f)) {
-        perror("fread failed");
-        return false;
+    bool flag = read_u_char_vec(f, data);
+    if(!flag) {
+        fprintf(stderr, "Error: ElGamel_File2PK: read file failed.");
     }
 
     size_t rd_bytes = pk.deserialize(data);
     if(rd_bytes == 0) {
-        fprintf(stderr, "Error: ElGamel_File2PK: load pub-key failed.");
+        fprintf(stderr, "Error: ElGamel_File2PK: deserialize pub-key failed.");
         return false;
     }
 
     return true;
 }
 
-/* Encryptor and Decryptor */
+/**
+ * class ElGamelEncMsg
+ */
 
-ElGamelEncMsg ElGamelEncrypt(const ElGamelPK& pk, const m_type& msg) {
-    EllipticCurve e(pk.eCtx);
-    const m_type p = pk.eCtx.p;
-    ElGamelEncMsg envMsg = std::make_pair(Point(mnum(0), mnum(0)), Point(mnum(0), mnum(0)));
+ElGamelEncMsg::ElGamelEncMsg(const std::pair<Point, Point>& a) : std::pair<Point, Point>(a) {}
 
-    auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
-    boost::random::mt19937 rng(seed);
-
-    boost::random::uniform_int_distribution<m_type> dist(2, pk.maxu);
-    m_type k = dist(rng);
-
-    Point G(mnum(pk.Gx, p), mnum(pk.Gy, p));
-    Point Y(mnum(pk.Yx, p), mnum(pk.Yy, p));
-    Point C1 = e.mulPoint(G, k);
-    envMsg.first = C1;
-
-    m_type Mx, My;
-    bool flag = e.embedMessage(msg, Mx, My, pk.k);
-    if(!flag) {
-        cerr << "ElGamelEncrypt:: cann't embed the message: " << msg << endl;
-        return envMsg;
-    } else if(Mx >= p) {
-        cerr << "ElGamelEncrypt:: The msg is too large to embed. e.k="
-            << pk.k << ", msg=" << msg << ", p=" << p << "." << endl;
-        return envMsg;
-    }
-    Point M(mnum(Mx, p), mnum(My, p));
-    Point C2 = e.mulPoint(Y, k); C2 = e.addPoints(C2, M);
-    envMsg.second = C2;
-
-    return envMsg;
+ElGamelEncMsg& ElGamelEncMsg::operator=(const std::pair<Point, Point>& a) {
+    this->first = a.first;
+    this->second = a.second;
+    return *this;
 }
 
-m_type ElGamelDecrypt(const ElGamelSK& sk, const ElGamelEncMsg& msg) {
-    EllipticCurve e(sk.eCtx);
-    const m_type p = sk.eCtx.p;
+std::vector<u_char> ElGamelEncMsg::serialize() {
+    std::vector<u_char> ret;
+    std::vector<u_char> t;
 
-    Point C1 = msg.first;
-    Point C2 = msg.second;
+    // Serialize first point (C1)
+    t = serialize_mpz(this->first.x.getX());
+    ret.insert(ret.end(), t.begin(), t.end());
+    t = serialize_mpz(this->first.y.getX());
+    ret.insert(ret.end(), t.begin(), t.end());
 
-    Point T(mnum(0), mnum(0));
-    T = e.mulPoint(-C1, sk.x);
-    T = e.addPoints(C2, T);
+    // Serialize second point (C2)
+    t = serialize_mpz(this->second.x.getX());
+    ret.insert(ret.end(), t.begin(), t.end());
+    t = serialize_mpz(this->second.y.getX());
+    ret.insert(ret.end(), t.begin(), t.end());
 
-    return e.getMessage(T.x.getX(), sk.k);
+    return ret;
+}
+
+size_t ElGamelEncMsg::deserialize(const std::vector<u_char>& data, const m_type& p) {
+    size_t now = 0;
+    size_t prt_bytes;
+    std::vector<u_char> tmp;
+    m_type x;
+
+    // Deserialize first point (C1)
+    tmp.assign(data.begin() + now, data.end());
+    prt_bytes = deserialize_mpz(x, tmp);
+    if (prt_bytes == 0) return 0;
+    this->first.x = mnum(x, p);
+    now += prt_bytes;
+
+    tmp.assign(data.begin() + now, data.end());
+    prt_bytes = deserialize_mpz(x, tmp);
+    if (prt_bytes == 0) return 0;;
+    this->first.y = mnum(x, p);
+    now += prt_bytes;
+
+    // Deserialize second point (C2)
+    tmp.assign(data.begin() + now, data.end());
+    prt_bytes = deserialize_mpz(x, tmp);
+    if (prt_bytes == 0) return 0;;
+    this->second.x = mnum(x, p);
+    now += prt_bytes;
+
+    tmp.assign(data.begin() + now, data.end());
+    prt_bytes = deserialize_mpz(x, tmp);
+    if (prt_bytes == 0) return 0;
+    this->second.y = mnum(x, p);
+    now += prt_bytes;
+
+    return true;
+}
+
+int ElGamelEncMsg::writeTo(FILE* f) const {
+    int ret;
+    ret = ms::write_mpz(f, this->first.x.getX());
+    if(ret <= 0) return ret;
+    ms::write_mpz(f, this->first.y.getX());
+    if(ret <= 0) return ret;
+
+    ms::write_mpz(f, this->second.x.getX());
+    if(ret <= 0) return ret;
+    ms::write_mpz(f, this->second.y.getX());
+    if(ret <= 0) return ret;
+    return 1;
+}
+
+int ElGamelEncMsg::readFrom(FILE* f, const m_type& p) {
+    int ret;
+    m_type xx, xy, yx, yy;
+    ret = ms::read_mpz(f, xx);
+    if(ret <= 0)return ret;
+    ret = ms::read_mpz(f, xy);
+    if(ret <= 0)return ret;
+    ret = ms::read_mpz(f, yx);
+    if(ret <= 0)return ret;
+    ret = ms::read_mpz(f, yy);
+    if(ret <= 0)return ret;
+
+    this->first = Point(mnum(xx, p), mnum(xy, p));
+    this->second = Point(mnum(yx, p), mnum(yy, p));
+    
+    return 1;
+}
+
+/* Encryptor and Decryptor */
+
+ElGamelEncryptor::ElGamelEncryptor(const ElGamelPK& pk)
+:p(pk.eCtx.p) {
+    e = new EllipticCurve(pk.eCtx);
+    auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
+    rng = boost::random::mt19937(seed);
+    dist = boost::random::uniform_int_distribution<m_type>(2, pk.maxu);
+    embed_k = pk.k;
+    G = new Point(mnum(pk.Gx, p), mnum(pk.Gy, p));
+    Y = new Point(mnum(pk.Yx, p), mnum(pk.Yy, p));
+}
+
+ElGamelEncryptor::~ElGamelEncryptor() {
+    delete e;
+    delete G;
+    delete Y;
+}
+
+ElGamelEncMsg* ElGamelEncryptor::Encrypt(const m_type& msg) {
+    bool flag = e->embedMessage(msg, Mx, My, embed_k);
+    if(!flag) {
+        cerr << "ElGamelEncrypt:: cann't embed the message: " << msg << endl;
+        return NULL;
+    } else if (Mx >= p) {
+        cerr << "ElGamelEncrypt:: The msg is too large to embed. e.k="
+            << embed_k << ", msg=" << msg << ", p=" << p << "." << endl;
+        return NULL;
+    }
+    Point M(mnum(Mx, p), mnum(My, p));
+    m_type k = dist(rng);
+    
+    Point C1 = e->mulPoint(*G, k);
+
+    Point C2 = e->mulPoint(*Y, k);
+    C2 = e->addPoints(C2, M);
+
+    ElGamelEncMsg* encMsg = new ElGamelEncMsg(std::make_pair(C1, C2));
+    return encMsg;
+}
+
+bool ElGamelEncryptor::EncryptFile(FILE* pf, FILE* cf) {
+    int p_mp_size = p.backend().data()->_mp_size;
+    u_char max_len_m;
+    if(p_mp_size>0) max_len_m = p_mp_size*GMP_LIMB_BITS/8;
+    else max_len_m = (-p_mp_size)*GMP_LIMB_BITS/8;
+
+    u_char* buf = new u_char[max_len_m];
+    u_char rest = 0;
+    u_char rd_bytes;
+    while((rd_bytes = fread(buf+rest, sizeof(u_char), max_len_m-rest, pf)) > 0 || rest>0) {
+        m_type m = 0;
+        u_char len = rest+rd_bytes;
+        for(u_char i=0; i<len; ++i) m = (m<<8)|buf[i];
+        for(; len>0; --len) {
+            bool flag =e->embedMessage(m, Mx, My, embed_k);
+            if(flag && Mx<p) break;
+            m >>= 8;
+        }
+        if(!len) {
+            cerr << "ElGamelEncryptor::EncryptFile: cann't embed message." << endl;
+            delete[] buf;
+            return false;
+        }
+
+        // write cipher chip
+        fwrite(&len, sizeof(u_char), 1, cf);
+        Point M(mnum(Mx, p), mnum(My, p));
+        m_type k = dist(rng);
+        Point C1 = e->mulPoint(*G, k);
+        Point C2 = e->mulPoint(*Y, k);
+        C2 = e->addPoints(C2, M);
+        ElGamelEncMsg encMsg = std::make_pair(C1, C2);
+        encMsg.writeTo(cf);
+
+        // move the rest to the front
+        for(u_char i=0; i<rest+rd_bytes-len; ++i) buf[i] = buf[i+len];
+        rest = rest+rd_bytes-len;
+    }
+    return true;
+}
+
+ElGamelDecryptor::ElGamelDecryptor(const ElGamelSK& sk)
+: p(sk.eCtx.p),
+  x(sk.x),
+  embed_k(sk.k) {
+    e = new EllipticCurve(sk.eCtx);
+    C1 = NULL;
+    C2 = NULL;
+}
+
+ElGamelDecryptor::~ElGamelDecryptor() {
+    delete e;
+    delete C1;
+    delete C2;
+}
+
+m_type ElGamelDecryptor::Decrypt(const ElGamelEncMsg& msg) {
+    if(C1==NULL) C1 = new Point(msg.first);
+    else *C1 = msg.first;
+
+    if(C2==NULL) C2 = new Point(msg.second);
+    else *C2 = msg.second;
+    
+    Point T(e->mulPoint(-(*C1), x));
+    T = e->addPoints(*C2, T);
+
+    return e->getMessage(T.x.getX(), embed_k);
+}
+
+bool ElGamelDecryptor::DecryptFile(FILE* cf, FILE* pf) {
+    ElGamelEncMsg encMsg = std::make_pair(
+        Point(mnum(0), mnum(0)),
+        Point(mnum(0), mnum(0))
+    );
+    u_char rd_bytes;
+    u_char len_m;
+    while((rd_bytes = fread(&len_m, sizeof(u_char), 1, cf))>0) {
+        int flag = encMsg.readFrom(cf, p);
+        if(flag<1) return false;
+        m_type m = this->Decrypt(encMsg);
+        for(size_t i=0; i<len_m; ++i) {
+            u_char now = int((m>>(8*(len_m-i-1)))&0xff);
+            fwrite(&now, sizeof(u_char), 1, pf);
+        }
+    }
+    return true;
 }
 
 /* ElGamel Context related functions */
@@ -369,22 +601,22 @@ bool ElGamelGenerator::findGenBrutely() {
     return true;
 }
 
-void ElGamelGenerator::genKey(ElGamelSK& sk, ElGamelPK& pk) {
+bool ElGamelGenerator::genKey(ElGamelSK& sk, ElGamelPK& pk) {
     if(!MillarRabin(e->getP())) {
         cerr << "ElGamelGenerator:: The modulus " << e->getP() << " is not a prime." << endl;
-        return;
+        return false;
     }
 
     if(!e->checkPoint(G)) {
         if(level == 0) level = EL_GAMEL_DEFAULT_LEVEL;
         bool flag = this->findGenBrutely();
-        if(!flag) return;
+        if(!flag) return false;
     }
 
     auto seed = std::chrono::high_resolution_clock::now().time_since_epoch().count();
     rng.seed(seed);
 
-    m_type maxu = sqrt(level);
+    m_type maxu = level - 1;
     boost::random::uniform_int_distribution<m_type> dist(2, maxu);
     x = dist(rng);
     Y = e->mulPoint(G, x);
@@ -400,6 +632,8 @@ void ElGamelGenerator::genKey(ElGamelSK& sk, ElGamelPK& pk) {
     pk.Yy = Y.y.getX();
     pk.k = k;
     pk.maxu = maxu;
+
+    return true;
 }
 
 bool ElGamelGenerator::hasGen() {

@@ -38,7 +38,7 @@ std::vector<u_char> serialize_mpz(const m_type& n) {
 
     std::vector<u_char> ret;
     size_t size;
-    u_char* chs = (u_char*)mpz_export(nullptr, &size, 1, 1, 0, 0, n.backend().data());
+    u_char* chs = (u_char*)mpz_export(nullptr, &size, 1, 1, 1, 0, n.backend().data());
     // insert sign byte
     u_char ss;
     if(n.sign() >= 0) ss = 0;
@@ -65,19 +65,12 @@ std::vector<u_char> serialize_mpz(const m_type& n) {
 
 size_t deserialize_mpz(m_type& n, const std::vector<u_char>& data) {
     size_t now = 0;
-    if(data.size() < now+1) {
-        std::cerr << "Error: deserialize_mpz: no length." << std::endl;
-        return 0;
-    }
+    if(data.size() < now+1) return 0;
     data.at(0);
     u_char len = data[0];
     ++now;
 
-    if(data.size() < now+len+1) {
-        std::cerr << "Error: deserialize_mpz: data is shorter than designated by length field."
-            << std::endl;
-        return 0;
-    }
+    if(data.size() < now+len+1) return 0;
     u_char sign = data[now];
     int f = 1;
     if(sign == 0xff) f = -1;

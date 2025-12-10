@@ -10,30 +10,23 @@ bool testElGamel() {
     ElGamelPK pk;
 
     const char* str_msg = "3245676532457892346578264385726348956829374658927346895638974";
-    m_type msg = 0;
-    int len = strlen(str_msg);
+    m_type msg(str_msg);
 
-    for(int i=0;i<len;++i) {
-        msg = (msg*10) + (str_msg[i] - '0');
+    bool flag = g.genKey(sk, pk);
+    if(!flag) {
+        std::cerr << "generate key failed." << endl;
+        return false;
     }
 
-    g.genKey(sk, pk);
-
-    const m_type t = 1;
-    const m_type p = (t<<256) - (t<<32) - (t<<9) - (t<<8) - (t<<7) - (t<<6) - (t<<4) - 1;
-    EllipticCurve e(0, 7, p);
-    Point G(mnum(pk.Gx, p), mnum(pk.Gy, p));
-    // cout << "x: " << sk.x << endl;
-    Point Y1 = e.mulPoint(G, sk.x);
-
-    if((Y1.x.getX() != pk.Yx) || (Y1.y.getX() != pk.Yy)) {
-        cout << "key failed." << endl;
-        cout << "Y(" << pk.Yx << "," << pk.Yy << ")." << endl;
-        cout << "Y1(" << Y1.x.getX() << "," << Y1.y.getX() << ")." << endl;
+    ElGamelEncryptor encryptor(pk);
+    ElGamelDecryptor decryptor(sk);
+    auto pEncMsg  = encryptor.Encrypt(msg);
+    if(pEncMsg == NULL) {
+        fprintf(stderr, "encrypt failed.\n");
+        return false;
     }
-
-    auto enc_msg = ElGamelEncrypt(pk, msg);
-    auto res_msg = ElGamelDecrypt(sk, enc_msg);
+    auto res_msg = decryptor.Decrypt(*pEncMsg);
+    delete pEncMsg;
     cout << "msg:     " << msg     << endl;
     cout << "res_msg: " << res_msg << endl;
     return true;
@@ -79,8 +72,8 @@ bool testK2F_F2K() {
     FILE* skf = fopen("./elgamel_sk.key", "wb");
     FILE* pkf = fopen("./elgamel_pk.key", "wb");
 
-    ElGamel_SK2File(skf, sk);
-    ElGamel_PK2File(pkf, pk);
+    sk.writeTo(skf);
+    pk.writeTo(pkf);
 
     fclose(skf);
     fclose(pkf);
@@ -91,8 +84,8 @@ bool testK2F_F2K() {
     ElGamelSK sk2;
     ElGamelPK pk2;
 
-    ElGamel_File2SK(skf, sk2);
-    ElGamel_File2PK(pkf, pk2);
+    sk2.readFrom(skf);
+    pk2.readFrom(pkf);
 
     if(sk.serialize() != sk2.serialize() || pk.serialize() != pk2.serialize()) {
         fprintf(stderr, "test K2F_F2K failed.\n");
@@ -104,5 +97,54 @@ bool testK2F_F2K() {
     fclose(pkf);
 
     fprintf(stderr, "test K2F_F2K passed.\n");
+    return true;
+}
+
+bool testFileEncDec() {
+    ElGamelSK sk;
+    ElGamelPK pk;
+    ElGamelGenerator g;
+
+    g.genKey(sk, pk);
+
+    ElGamelEncryptor encryptor(pk);
+    char pfname[] = "Makefile";
+    char cfname[] = "Makefile.enc";
+    char pf2name[] = "Makefile2.txt";
+    FILE* pf = fopen(pfname, "rb");
+    FILE* cf = fopen(cfname, "wb");
+
+    bool flag = encryptor.EncryptFile(pf, cf);
+    if(!flag) {
+        std::cerr << "error: EncryptFile Failed." << endl;
+        return false;
+    }
+    fclose(pf); fclose(cf);
+
+    ElGamelDecryptor decryptor(sk);
+    pf = fopen(pf2name, "wb");
+    cf = fopen(cfname, "rb");
+    flag = decryptor.DecryptFile(cf, pf);
+    if(!flag) {
+        std::cerr << "error: DecryptFile Failed." << endl;
+        return false;
+    }
+
+    // compare two pf
+    FILE* pf2 = fopen(pf2name, "rb");
+    pf = fopen(pfname, "rb");
+    u_char c1, c2;
+    size_t rd_bytes;
+    while((rd_bytes = fread(&c1, sizeof(u_char), 1, pf))>0) {
+        rd_bytes = fread(&c2, sizeof(u_char), 1, pf2);
+        if(rd_bytes<1) {
+            std::cerr << "error: two plain file have different lengths." << endl;
+            return false;
+        }
+        if(c1 != c2) {
+            std::cerr << "error: two plain file have different bytes." << endl;
+            return false;
+        }
+    }
     return true;
 }

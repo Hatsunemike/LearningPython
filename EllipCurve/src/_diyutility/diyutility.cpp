@@ -73,9 +73,10 @@ void diy::print_hex(const m_type& a, FILE* of) {
     if(a<0) fprintf(of, "-");
     fprintf(of, "0x");
     size_t size;
-    u_char* chs = (u_char*)mpz_export(nullptr, &size, 1, 1, 0, 0, a.backend().data());
+    u_char* chs = (u_char*)mpz_export(nullptr, &size, 1, 1, 1, 0, a.backend().data());
     for(size_t i=0;i<size;++i) {
         if(i>0 && i%4 == 0) fprintf(of, " ");
+        if(i>0 && i%16 == 0) fprintf(of, "\n");
         fprintf(of, "%02x", chs[i]);
     }
 

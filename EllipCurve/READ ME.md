@@ -23,3 +23,4 @@ A demo implementing some ECC cryptology.
     - unordered
     - random
 - OpenSSL 3.0.13
+- argparse (for command line utility `elgamel` )
