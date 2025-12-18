@@ -8,10 +8,9 @@
             "mode": "auto",
             "program": "${fileDirname}",
             "output":"fileBasenameNoExtensio${fileBasenameNoExtension}",
-            "args": [],
-            "console": "externalTerminal",  // 关键：使用终端而不是调试控制台
-            "env": {},
-            "externalConsole": false
+            "args": ["12312432"],
+            "console": "internalConsole",
+            "env": {}
         }
     ]
 }
