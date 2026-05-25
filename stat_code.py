@@ -98,7 +98,7 @@ def print_file_details(file_details, max_files=10):
     print("-" * 120)
 
 if __name__ == '__main__':
-    directory = './EllipCurve'
+    directory = '.'
     
     if not os.path.exists(directory):
         print(f"错误: 目录 '{directory}' 不存在")
@@ -108,4 +108,4 @@ if __name__ == '__main__':
     stats, file_details = scan_directory(directory)
     
     print_summary(stats)
-    # print_file_details(file_details)
+    print_file_details(file_details)
